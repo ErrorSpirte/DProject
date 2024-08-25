@@ -8,7 +8,7 @@ print(os.listdir('images'))
 # Настройки бота
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='/', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Событие при запуске бота
 @bot.event
@@ -16,7 +16,7 @@ async def on_ready():
     print("Bot is online!")  # Сообщение в консоли
     for guild in bot.guilds:
         for channel in guild.text_channels:
-            await channel.send('Bot is online! Use "/commands" to see commands.')
+            await channel.send('Bot is online! Use "!commands" to see commands.')
 
 # Факты о глобальном потеплении
 climate_facts = [
@@ -111,22 +111,24 @@ async def progress(ctx):
     if goal:
         await ctx.send(f"📈 Ваша текущая цель: {goal}")
     else:
-        await ctx.send("❗ У вас нет установленной цели. Используйте /track_goal, чтобы установить её.")
+        await ctx.send("❗ У вас нет установленной цели. Используйте !track_goal, чтобы установить её.")
 
 @bot.command(name='commands')
 async def send_commands_list(ctx):
     commands_list = """
     📜 Список доступных команд:
-    /climate_facts - Отправляет случайный факт o глобальном потеплении.
-    /climate_news - Делится последними новостями o климате.
-    /what_is_global_warming - Объясняет, что такое глобальное потепление.
-    /why_important - Говорит, почему это важно.
-    /how_to_mitigate - Дает советы, как бороться c проблемой.
-    /eco_challenge - Предлагает простое эко-задание.
-    /track_goal - Пользователь устанавливает цель, бот отслеживает её выполнение.
-    /progress - Показывает прогресс пользователя.
-    /meme - отправляет мемы (пока нету)
-    /commands - Показывает список всех команд.
+    !climate_facts - Отправляет случайный факт o глобальном потеплении.
+    !climate_news - Делится последними новостями o климате. (пока не точно работает)
+    !what_is_global_warming - Объясняет, что такое глобальное потепление.
+    !why_important - Говорит, почему это важно.
+    !how_to_mitigate - Дает советы, как бороться c проблемой.
+
+    !eco_challenge - Предлагает простое эко-задание.
+    !track_goal - Пользователь устанавливает цель, бот отслеживает её выполнение.
+    !progress - Показывает прогресс пользователя.
+
+    !meme - отправляет мемы (пока нету)
+    !commands - Показывает список всех команд.
     """
     await ctx.send(commands_list)
 
@@ -141,5 +143,12 @@ async def shutdown(ctx):
     await ctx.send("🛑 Bot is shutting down...")
     await bot.close()
 
+@bot.command(name='clear')
+@commands.has_permissions(manage_messages=True)
+async def clear(ctx, amount: int = 10):
+    """Очищает последние n сообщений (по умолчанию 10)."""
+    deleted = await ctx.channel.purge(limit=amount)
+    await ctx.send(f"🧹 Удалено {len(deleted)} сообщений.", delete_after=5)
+
 # Запуск бота
-bot.run('paste token here')
+bot.run('paste your token here')
