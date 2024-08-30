@@ -1,22 +1,13 @@
-import discord, os
+import discord
 from discord.ext import commands
 import random, requests
 from bs4 import BeautifulSoup
-
-print(os.listdir('images'))
+from collections import Counter
 
 # Настройки бота
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
-
-# Событие при запуске бота
-@bot.event
-async def on_ready():
-    print("Bot is online!")  # Сообщение в консоли
-    for guild in bot.guilds:
-        for channel in guild.text_channels:
-            await channel.send('Bot is online! Use "!commands" to see commands.')
+bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
 
 # Факты о глобальном потеплении
 climate_facts = [
@@ -29,49 +20,83 @@ climate_facts = [
     "Изменение климата угрожает биоразнообразию и экосистемам.",
     "Потепление на 2°C может привести к исчезновению 99% коралловых рифов.",
     "B последние 30 лет мы видим наиболее интенсивное потепление.",
-    "Парижское соглашение ставит цель удержать глобальное потепление на уровне ниже 2°C."
-]
+    "Парижское соглашение ставит цель удержать глобальное потепление на уровне ниже 2°C.",
+    "Изменение климата может увеличить частоту сильных штормов и ураганов.",
+    "Таяние ледников и льдов Антарктиды угрожает прибрежным регионам.",
+    "Повышение температуры приводит к увеличению количества лесных пожаров.",
+    "Глобальное потепление способствует распространению болезней, таких как малярия.",
+    "Океаны нагреваются быстрее, чем когда-либо за последние 50 лет."]
 
-# Функция для получения новостей о климате
-def get_climate_news():
-    url = "https://www.bbc.com/news/science_and_environment"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    headlines = soup.find_all('h3', class_='gs-c-promo-heading__title')
-    news = [headline.get_text() for headline in headlines[:5]]
-    return news
+fact_counter = Counter()
+
+# Получения шуток 1
+def get_joke(type='general'):
+    url = "https://www.anekdot.ru/last/good/" if type == 'general' else "https://www.anekdot.ru/last/black/"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Проверка успешности запроса
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Поиск анекдотов на сайте
+        jokes = soup.find_all('div', class_='text')
+        if jokes:
+            return random.choice(jokes).get_text(strip=True)
+        else:
+            return "He удалось найти шутки. Возможно, структура сайта изменилась."
+    except requests.RequestException as e:
+        return f"Ошибка при запросе шутки: {e}"
+    except Exception as e:
+        return f"Неизвестная ошибка: {e}"
+
+# Получения шуток 2
+@bot.command(name='joke')
+async def joke(ctx, type='general'):
+    joke_text = get_joke(type)
+    await ctx.send(joke_text)
+
+# Магический шар
+@bot.command(name='magic')
+async def magic(ctx, *, question=None):
+    if question and len(question) > 2 and question.endswith('?'):
+        # Проверка на наличие букв в вопросе
+        if any(c.isalpha() for c in question):
+            await ctx.send(magic_ball())
+        else:
+            await ctx.send("Извини уж, но это не вопрос")
+    else:
+        await ctx.send("Извини уж, но это не вопрос")
+
+# Функция для магического шара
+def magic_ball():
+    responses = ["Да", "Нет", "Возможно", "He знаю"]
+    return random.choice(responses)
 
 # Команда для случайного факта о глобальном потеплении
 @bot.command(name='climate_facts')
 async def send_climate_facts(ctx):
-    fact = random.choice(climate_facts)
+    if len(fact_counter) == len(climate_facts):
+        fact_counter.clear()  # Сброс счетчика после использования всех фактов
+    fact = random.choice([f for f in climate_facts if fact_counter[f] < 2])
+    fact_counter[fact] += 1
     await ctx.send(f"🌍 {fact}")
 
-# Команда для получения последних новостей о климате
-@bot.command(name='climate_news')
-async def send_climate_news(ctx):
-    news = get_climate_news()
-    news_message = "\n".join([f"🔗 {headline}" for headline in news])
-    await ctx.send(f"📰 Последние новости о климате:\n{news_message}")
-
-# Команда для объяснения глобального потепления
+# Объяснения глобального потепления
 @bot.command(name='what_is_global_warming')
 async def what_is_global_warming(ctx):
     await ctx.send(
         "🌡️ Глобальное потепление — это долговременное увеличение средней температуры Земли из-за выбросов парниковых газов. "
-        "Эти газы, такие как CO2 и метан, создают парниковый эффект, задерживая тепло в атмосфере."
-    )
+        "Эти газы, такие как CO2 и метан, создают парниковый эффект, задерживая тепло в атмосфере.")
 
-# Команда для объяснения важности проблемы
+# Объяснения важности проблемы
 @bot.command(name='why_important')
 async def why_important(ctx):
     await ctx.send(
         "🔥 Глобальное потепление важно, потому что оно вызывает изменение климата, "
         "которое может привести к экстремальным погодным условиям, поднятию уровня моря, "
-        "снижению урожайности и разрушению экосистем."
-    )
+        "снижению урожайности и разрушению экосистем.")
 
-# Команда для совета по борьбе с проблемой
+# Советы по борьбе с проблемой
 @bot.command(name='how_to_mitigate')
 async def how_to_mitigate(ctx):
     await ctx.send(
@@ -80,10 +105,9 @@ async def how_to_mitigate(ctx):
         "2. Перейти на возобновляемые источники энергии.\n"
         "3. Минимизировать использование пластика.\n"
         "4. Поддерживать устойчивые практики.\n"
-        "5. Сократить количество выбросов углерода, используя общественный транспорт или велосипеды."
-    )
+        "5. Сократить количество выбросов углерода, используя общественный транспорт или велосипеды.")
 
-# Команда для задания эко-челленджа
+# Задание эко-челленджа
 @bot.command(name='eco_challenge')
 async def eco_challenge(ctx):
     challenges = [
@@ -92,11 +116,13 @@ async def eco_challenge(ctx):
         "💡 Выключи свет, когда не используешь eгo.",
         "📦 Минимизируй использование пластика на один день.",
         "🚲 Используй велосипед вместо автомобиля сегодня."
+        "♻️ Перейди на безотходное потребление на один день.",
+        "🛒 Купи продукцию местного производства."
     ]
     challenge = random.choice(challenges)
     await ctx.send(f"🌱 Ваш эко-челлендж на сегодня: {challenge}")
 
-# Команда для отслеживания цели
+# Отслеживания цели
 user_goals = {}
 
 @bot.command(name='track_goal')
@@ -104,7 +130,7 @@ async def track_goal(ctx, *, goal):
     user_goals[ctx.author.id] = goal
     await ctx.send(f"🎯 Цель установлена: {goal}")
 
-# Команда для показа прогресса пользователя
+# Показ прогресса пользователя
 @bot.command(name='progress')
 async def progress(ctx):
     goal = user_goals.get(ctx.author.id, None)
@@ -113,12 +139,12 @@ async def progress(ctx):
     else:
         await ctx.send("❗ У вас нет установленной цели. Используйте !track_goal, чтобы установить её.")
 
+# Список команд
 @bot.command(name='commands')
 async def send_commands_list(ctx):
     commands_list = """
     📜 Список доступных команд:
     !climate_facts - Отправляет случайный факт o глобальном потеплении.
-    !climate_news - Делится последними новостями o климате. (пока не точно работает)
     !what_is_global_warming - Объясняет, что такое глобальное потепление.
     !why_important - Говорит, почему это важно.
     !how_to_mitigate - Дает советы, как бороться c проблемой.
@@ -127,16 +153,13 @@ async def send_commands_list(ctx):
     !track_goal - Пользователь устанавливает цель, бот отслеживает её выполнение.
     !progress - Показывает прогресс пользователя.
 
-    !meme - отправляет мемы (пока нету)
+    !joke [type] - Отправляет шутку. Типы: general, dark.
+    !magic [вопрос] - Отвечает на ваш вопрос магического шара.
     !commands - Показывает список всех команд.
     """
     await ctx.send(commands_list)
 
-# Команда для отправки случайного мема из папки 'images'
-@bot.command(name='meme')
-async def send_meme(ctx):
-    await ctx.send("тут пока нету мемов ☹️")
-
+# Выключение бота и очистка сообщений
 @bot.command(name='shutdown')
 @commands.is_owner()
 async def shutdown(ctx):
@@ -144,11 +167,38 @@ async def shutdown(ctx):
     await bot.close()
 
 @bot.command(name='clear')
-@commands.has_permissions(manage_messages=True)
+@commands.is_owner()
 async def clear(ctx, amount: int = 10):
     """Очищает последние n сообщений (по умолчанию 10)."""
     deleted = await ctx.channel.purge(limit=amount)
     await ctx.send(f"🧹 Удалено {len(deleted)} сообщений.", delete_after=5)
 
+# Загрузка и сохранение целей
+import json
+
+def load_goals():
+    global user_goals
+    try:
+        with open('goals.json', 'r') as f:
+            user_goals = json.load(f)
+    except FileNotFoundError:
+        user_goals = {}
+
+def save_goals():
+    with open('goals.json', 'w') as f:
+        json.dump(user_goals, f)
+
+@bot.event
+async def on_ready():
+    print("Bot is online!")
+    load_goals()
+    for guild in bot.guilds:
+        for channel in guild.text_channels:
+            await channel.send('Bot is online! Use "!commands" to see commands.')
+
+@bot.event
+async def on_disconnect():
+    save_goals()
+
 # Запуск бота
-bot.run('paste your token here')
+bot.run('Paste your Token here')
